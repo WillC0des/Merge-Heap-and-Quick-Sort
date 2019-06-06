@@ -1,0 +1,165 @@
+/**
+ * William Burrows
+ * E01243936
+ * COSC 311 Project 4
+ * Version 02
+ * Fall 2014
+ */
+import java.awt.Desktop;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.Scanner;
+
+/**
+ * This class reads in the three data files to sort and creates output files with
+ * the data
+ */
+
+public class SortingDriver {
+    private static Scanner input;
+    private static SortUnit Organize;
+
+    private static String[] dataFiles = { "C:\\Users\\Eskimo\\Desktop\\Projects\\dataAscend.txt",
+            "C:\\Users\\Eskimo\\Desktop\\Projects\\dataRandom.txt",
+            "C:\\Users\\Eskimo\\Desktop\\Projects\\dataDescend.txt" };
+    private static String[] inputType = { "ascend", "random", "descend" };
+    private static String[] sortNames = { "merge", "heap", "quick" };
+
+    //Array size 10,000
+    private static int[] CollectionOfNums = new int[10_000];
+    private static final int N_FILES = inputType.length;
+    private static final int N_SORTS = sortNames.length;
+
+    // Referenced Stack Overflow
+
+    public static void main(String[] args) {
+        input = new Scanner(System.in);
+
+        System.out.print("Would you like to print the table? [y/n] ");
+
+        if (!input.nextLine().substring(0, 1).equalsIgnoreCase("y")) {
+            menu: while (true) {
+                System.out.print("Please name your output file " + "(.txt will be appended): ");
+                String requestedFileName = input.nextLine() + ".txt";
+
+                System.out.println("1: Merge Sort");
+                System.out.println("2: Heap Sort");
+                System.out.println("3: Quick Sort");
+                System.out.println("");
+                System.out.println("0: End");
+
+                int sortType = input.nextInt();
+                if (sortType <= 3 && sortType >= 0) {
+                    if (sortType == 0) {
+                        break menu;
+                    }
+                    System.out.println("Which file would you like to sort?");
+                    System.out.println("1: Ascending");
+                    System.out.println("2: Random");
+                    System.out.println("3: Descending");
+                    int fileSelect = input.nextInt() - 1;
+
+                    input.nextLine();
+                    long result = sort(sortType, fileSelect, requestedFileName);
+                    if (result == 1L) {
+                        System.out.println("Error reading from the input files.");
+                    } else {
+                        System.out.println("The sort took: " + result + " ms.");
+                    }
+
+                    System.out.print("Would you like to sort another" + " [y/n] ");
+
+                    if (!input.nextLine().trim().substring(0, 1).equalsIgnoreCase("y")) {
+                        break menu;
+                    }
+                } else {
+                    System.out.println("Invalid response.");
+                }
+                System.out.println();
+            }
+        }
+        else {
+            // used for creating the table
+            long[][] runtimes = new long[N_FILES][N_SORTS];
+
+            for (int s = 0; s < N_SORTS; s++) {
+                for (int f = 0; f < N_FILES; f++) {
+                    runtimes[f][s] =
+                            sort(s, f, (sortNames[s] + "_" + inputType[f] + ".txt"));
+                }
+            }
+
+            PrintWriter completeOutput = null;
+            File timesFile = new File("runTests.txt");
+            try {
+                completeOutput =
+                        new PrintWriter(new FileOutputStream(timesFile));
+
+                String str = String.format("%25s", sortNames[0]);
+
+                for (int i = 1; i < N_SORTS; i++) {
+                    str += String.format("%15s", sortNames[i]);
+                }
+
+                completeOutput.print(str);
+
+                for (int i = 0; i < N_FILES; i++) {
+                    completeOutput.printf("%n%10s%15s%15s%15s",
+                            inputType[i],
+                            runtimes[i][0] + "ns",
+                            runtimes[i][1] + "ns",
+                            runtimes[i][2] + "ns");
+                }
+
+                System.out.println("Runs complete.");
+                Desktop.getDesktop().open(timesFile);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace(); // printwriter
+            } catch (IOException e) {
+                e.printStackTrace(); // desktop.open()
+            } finally {
+                completeOutput.close();
+            }
+        }
+        input.close();
+    }
+
+    private static long sort(int sortType, int fileSelect, String fileName) {
+        Scanner dataIn = null;
+        try {
+            dataIn = new Scanner(new FileInputStream(new File(dataFiles[fileSelect])));
+            for (int i = 0; dataIn.hasNext(); i++) {
+                CollectionOfNums[i] = dataIn.nextInt();
+            }
+        } catch (FileNotFoundException e) {
+            return 1L;
+        }
+            dataIn.close();
+
+
+        switch (sortType) {
+            case 0:
+                Organize = new MergeSortUnit(CollectionOfNums);
+                break;
+            case 1:
+                Organize = new HeapSortUnit(CollectionOfNums);
+                break;
+            case 2:
+                Organize = new QuickSortUnit(CollectionOfNums);
+                break;
+        }
+
+        //Returns how long it took to sort
+        long startTime = System.nanoTime();
+        Organize.sort();
+        long endTime = System.nanoTime();
+
+        Organize.printToFile(fileName);
+        return endTime - startTime;
+
+    }
+}
